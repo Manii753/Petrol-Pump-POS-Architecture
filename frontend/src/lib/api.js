@@ -89,6 +89,8 @@ export const reportsAPI = {
   getDailySalesReport: (params) => api.get('/reports/daily-sales', { params }),
   getMonthlySalesReport: (params) => api.get('/reports/monthly-sales', { params }),
   exportShiftPDF: (shiftId) => api.get(`/reports/export-pdf/${shiftId}`, { responseType: 'blob' }),
+  exportDailySalesReportPDF: (params) => api.get('/reports/export-daily-sales-pdf', { params, responseType: 'blob' }),
+  exportMonthlySalesReportPDF: (params) => api.get('/reports/export-monthly-sales-pdf', { params, responseType: 'blob' }),
 };
 
 // Users API

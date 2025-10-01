@@ -92,6 +92,35 @@ export default function Reports() {
     }
   };
 
+  const handleExportPDF = async () => {
+    try {
+      let response;
+      let filename;
+
+      if (reportType === 'daily') {
+        response = await reportsAPI.exportDailySalesReportPDF({ date: selectedDate });
+        filename = `daily-sales-report-${selectedDate}.pdf`;
+      } else if (reportType === 'monthly') {
+        response = await reportsAPI.exportMonthlySalesReportPDF({ year: selectedYear, month: selectedMonth });
+        filename = `monthly-sales-report-${selectedYear}-${selectedMonth.toString().padStart(2, '0')}.pdf`;
+      }
+
+      if (response) {
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Failed to export sales report PDF:', error);
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -167,13 +196,18 @@ export default function Reports() {
                 </>
               )}
             </div>
-            <Button onClick={generateReport} disabled={loading}>
+            <Button onClick={generateReport} disabled={loading} className="mr-2">
               {loading ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
               ) : (
                 'Generate Report'
               )}
             </Button>
+            {reportData && (
+              <Button onClick={handleExportPDF} variant="outline" disabled={loading}>
+                <FileText className="mr-2 h-4 w-4" /> Download PDF
+              </Button>
+            )}
           </CardContent>
         </Card>
 
