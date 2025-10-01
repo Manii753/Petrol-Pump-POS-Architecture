@@ -1,9 +1,47 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { shiftsAPI } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function Shifts() {
   const { user } = useAuth();
@@ -85,7 +123,7 @@ export default function Shifts() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       </Layout>
     );
@@ -94,196 +132,183 @@ export default function Shifts() {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-secondary-900">Shifts</h1>
-            <p className="text-secondary-600 mt-1">
+            <h1 className="text-2xl font-bold">Shifts</h1>
+            <p className="text-muted-foreground mt-1">
               Manage your work shifts and view shift history
             </p>
           </div>
           <div className="space-x-3">
             {!currentShift ? (
-              <button
-                onClick={() => setShowStartModal(true)}
-                className="btn-primary"
-              >
-                Start New Shift
-              </button>
+              <Dialog open={showStartModal} onOpenChange={setShowStartModal}>
+                <DialogTrigger asChild>
+                  <Button>Start New Shift</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Start New Shift</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleStartShift}>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="openingCash" className="text-right">
+                          Opening Cash
+                        </Label>
+                        <Input
+                          id="openingCash"
+                          type="number"
+                          step="0.01"
+                          required
+                          value={formData.openingCash}
+                          onChange={(e) => setFormData({ ...formData, openingCash: e.target.value })}
+                          className="col-span-3"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">Start Shift</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
             ) : (
-              <button
-                onClick={() => setShowCloseModal(true)}
-                className="btn-warning"
-              >
-                Close Current Shift
-              </button>
+              <Dialog open={showCloseModal} onOpenChange={setShowCloseModal}>
+                <DialogTrigger asChild>
+                  <Button variant="destructive">Close Current Shift</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Close Current Shift</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCloseShift}>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="closingCash" className="text-right">
+                          Closing Cash
+                        </Label>
+                        <Input
+                          id="closingCash"
+                          type="number"
+                          step="0.01"
+                          required
+                          value={formData.closingCash}
+                          onChange={(e) => setFormData({ ...formData, closingCash: e.target.value })}
+                          className="col-span-3"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="notes" className="text-right">
+                          Notes
+                        </Label>
+                        <Textarea
+                          id="notes"
+                          value={formData.notes}
+                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                          className="col-span-3"
+                          placeholder="Any notes about this shift..."
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit" variant="destructive">Close Shift</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
         </div>
 
-        {/* Current Shift Status */}
         {currentShift && (
-          <div className="card">
-            <div className="flex items-center justify-between">
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Active Shift</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-medium text-secondary-900">Current Shift</h3>
-                <p className="text-sm text-secondary-600">
+                <p className="text-sm text-muted-foreground">
                   Started: {new Date(currentShift.startTime).toLocaleString()}
                 </p>
-                <p className="text-sm text-secondary-600">
+                <p className="text-sm text-muted-foreground">
                   Opening Cash: {formatCurrency(currentShift.openingCash)}
                 </p>
               </div>
-              <div className="text-right">
-                <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Active
-                </div>
-              </div>
-            </div>
-          </div>
+              <Badge>Active</Badge>
+            </CardContent>
+          </Card>
         )}
 
-        {/* Shifts Table */}
-        <div className="card">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-secondary-200">
-              <thead className="table-header">
-                <tr>
-                  <th className="table-header-cell">Date</th>
-                  <th className="table-header-cell">Attendant</th>
-                  <th className="table-header-cell">Start Time</th>
-                  <th className="table-header-cell">End Time</th>
-                  <th className="table-header-cell">Opening Cash</th>
-                  <th className="table-header-cell">Closing Cash</th>
-                  <th className="table-header-cell">Status</th>
-                  <th className="table-header-cell">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-secondary-200">
+        <Card>
+          <CardHeader>
+            <CardTitle>Shift History</CardTitle>
+            <CardDescription>A list of all past shifts.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Attendant</TableHead>
+                  <TableHead>Start Time</TableHead>
+                  <TableHead>End Time</TableHead>
+                  <TableHead className="text-right">Opening Cash</TableHead>
+                  <TableHead className="text-right">Closing Cash</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {shifts.map((shift) => (
-                  <tr key={shift._id}>
-                    <td className="table-body-cell">
+                  <TableRow key={shift._id}>
+                    <TableCell>
                       {new Date(shift.shiftDate).toLocaleDateString()}
-                    </td>
-                    <td className="table-body-cell">
-                      {shift.userId?.fullName || 'Unknown'}
-                    </td>
-                    <td className="table-body-cell">
+                    </TableCell>
+                    <TableCell>{shift.userId?.fullName || 'Unknown'}</TableCell>
+                    <TableCell>
                       {new Date(shift.startTime).toLocaleTimeString()}
-                    </td>
-                    <td className="table-body-cell">
+                    </TableCell>
+                    <TableCell>
                       {shift.endTime ? new Date(shift.endTime).toLocaleTimeString() : '-'}
-                    </td>
-                    <td className="table-body-cell">
+                    </TableCell>
+                    <TableCell className="text-right">
                       {formatCurrency(shift.openingCash)}
-                    </td>
-                    <td className="table-body-cell">
+                    </TableCell>
+                    <TableCell className="text-right">
                       {shift.closingCash ? formatCurrency(shift.closingCash) : '-'}
-                    </td>
-                    <td className="table-body-cell">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        shift.status === 'open' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-secondary-100 text-secondary-800'
-                      }`}>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={shift.status === 'open' ? 'default' : 'outline'}>
                         {shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="table-body-cell">
-                      <Link
-                        href={`/shifts/${shift._id}`}
-                        className="text-primary-600 hover:text-primary-900"
-                      >
-                        View Details
-                      </Link>
-                    </td>
-                  </tr>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/shifts/${shift._id}`}>View Details</Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Start Shift Modal */}
-      {showStartModal && (
-        <div className="fixed inset-0 bg-secondary-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-medium text-secondary-900 mb-4">Start New Shift</h3>
-            <form onSubmit={handleStartShift}>
-              <div className="mb-4">
-                <label className="form-label">Opening Cash</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={formData.openingCash}
-                  onChange={(e) => setFormData({ ...formData, openingCash: e.target.value })}
-                  className="form-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowStartModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Start Shift
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Close Shift Modal */}
-      {showCloseModal && currentShift && (
-        <div className="fixed inset-0 bg-secondary-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-medium text-secondary-900 mb-4">Close Current Shift</h3>
-            <form onSubmit={handleCloseShift}>
-              <div className="mb-4">
-                <label className="form-label">Closing Cash</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={formData.closingCash}
-                  onChange={(e) => setFormData({ ...formData, closingCash: e.target.value })}
-                  className="form-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="form-label">Notes (Optional)</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="form-input"
-                  rows={3}
-                  placeholder="Any notes about this shift..."
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowCloseModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-warning">
-                  Close Shift
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }

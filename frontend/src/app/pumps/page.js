@@ -4,6 +4,41 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { pumpsAPI, tanksAPI } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, MoreHorizontal, Pencil, Trash2, PlusCircle } from 'lucide-react';
 
 export default function Pumps() {
   const { user } = useAuth();
@@ -15,7 +50,7 @@ export default function Pumps() {
   const [formData, setFormData] = useState({
     pumpNumber: '',
     name: '',
-    nozzles: [{ nozzleNumber: 'N1', fuelTypeId: '' }, { nozzleNumber: 'N2', fuelTypeId: '' }]
+    nozzles: [{ nozzleNumber: 'N1', fuelTypeId: '' }]
   });
 
   useEffect(() => {
@@ -30,12 +65,23 @@ export default function Pumps() {
       ]);
       
       setPumps(pumpsResponse.data);
-      setFuelTypes(tanksResponse.data.map(tank => tank.fuelTypeId));
+      // Get unique fuel types
+      const uniqueFuelTypes = Array.from(new Map(tanksResponse.data.map(tank => [tank.fuelTypeId?._id, tank.fuelTypeId])).values());
+      setFuelTypes(uniqueFuelTypes.filter(Boolean));
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      pumpNumber: '',
+      name: '',
+      nozzles: [{ nozzleNumber: 'N1', fuelTypeId: '' }]
+    });
+    setEditingPump(null);
   };
 
   const handleSubmit = async (e) => {
@@ -53,12 +99,7 @@ export default function Pumps() {
       }
       
       setShowModal(false);
-      setFormData({
-        pumpNumber: '',
-        name: '',
-        nozzles: [{ nozzleNumber: 'N1', fuelTypeId: '' }, { nozzleNumber: 'N2', fuelTypeId: '' }]
-      });
-      setEditingPump(null);
+      resetForm();
       loadData();
     } catch (error) {
       console.error('Failed to save pump:', error);
@@ -70,7 +111,7 @@ export default function Pumps() {
     setFormData({
       pumpNumber: pump.pumpNumber,
       name: pump.name,
-      nozzles: pump.nozzles.length > 0 ? pump.nozzles : [{ nozzleNumber: 'N1', fuelTypeId: '' }, { nozzleNumber: 'N2', fuelTypeId: '' }]
+      nozzles: pump.nozzles.length > 0 ? pump.nozzles.map(n => ({...n, fuelTypeId: n.fuelTypeId?._id})) : [{ nozzleNumber: 'N1', fuelTypeId: '' }]
     });
     setShowModal(true);
   };
@@ -110,7 +151,7 @@ export default function Pumps() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       </Layout>
     );
@@ -119,82 +160,162 @@ export default function Pumps() {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-secondary-900">Pumps</h1>
-            <p className="text-secondary-600 mt-1">
+            <h1 className="text-2xl font-bold">Pumps</h1>
+            <p className="text-muted-foreground mt-1">
               Manage fuel pumps and nozzles configuration
             </p>
           </div>
           {user?.role === 'admin' && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="btn-primary"
-            >
-              Add New Pump
-            </button>
+            <Dialog open={showModal} onOpenChange={setShowModal}>
+              <DialogTrigger asChild>
+                <Button onClick={() => resetForm()}>Add New Pump</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>{editingPump ? 'Edit Pump' : 'Add New Pump'}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit}>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="pumpNumber" className="text-right">
+                        Pump Number
+                      </Label>
+                      <Input
+                        id="pumpNumber"
+                        required
+                        value={formData.pumpNumber}
+                        onChange={(e) => setFormData({ ...formData, pumpNumber: e.target.value })}
+                        className="col-span-3"
+                        placeholder="e.g., P1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="name" className="text-right">
+                        Pump Name
+                      </Label>
+                      <Input
+                        id="name"
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="col-span-3"
+                        placeholder="e.g., Pump 1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-start gap-4">
+                      <Label className="text-right pt-2">Nozzles</Label>
+                      <div className="col-span-3 space-y-2">
+                        {formData.nozzles.map((nozzle, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Input
+                              type="text"
+                              value={nozzle.nozzleNumber}
+                              onChange={(e) => updateNozzle(index, 'nozzleNumber', e.target.value)}
+                              className="flex-1"
+                              placeholder="Nozzle Number"
+                            />
+                            <Select
+                              value={nozzle.fuelTypeId}
+                              onValueChange={(value) => updateNozzle(index, 'fuelTypeId', value)}
+                            >
+                              <SelectTrigger className="flex-1">
+                                <SelectValue placeholder="Select Fuel" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {fuelTypes.map((fuelType) => (
+                                  <SelectItem key={fuelType._id} value={fuelType._id}>
+                                    {fuelType.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {formData.nozzles.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeNozzle(index)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addNozzle}
+                          className="mt-2"
+                        >
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add Nozzle
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+                    <Button type="submit">{editingPump ? 'Update Pump' : 'Add Pump'}</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
 
-        {/* Pumps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pumps.map((pump) => (
-            <div key={pump._id} className="card">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-medium text-secondary-900">
-                    {pump.pumpNumber} - {pump.name}
-                  </h3>
-                  <p className="text-sm text-secondary-600">
+        {pumps.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {pumps.map((pump) => (
+              <Card key={pump._id}>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>{pump.pumpNumber} - {pump.name}</CardTitle>
+                  {user?.role === 'admin' && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleEdit(pump)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(pump._id)} className="text-red-600">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
                     {pump.nozzles.length} nozzle{pump.nozzles.length !== 1 ? 's' : ''}
                   </p>
-                </div>
-                {user?.role === 'admin' && (
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(pump)}
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(pump._id)}
-                      className="text-danger-600 hover:text-danger-900"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Nozzles:</h4>
+                    {pump.nozzles.map((nozzle) => (
+                      <div key={nozzle._id} className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">{nozzle.nozzleNumber}</span>
+                        <span className="font-medium">
+                          {nozzle.fuelTypeId?.name || 'Unknown'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-secondary-700">Nozzles:</h4>
-                {pump.nozzles.map((nozzle) => (
-                  <div key={nozzle._id} className="flex justify-between items-center text-sm">
-                    <span className="text-secondary-600">{nozzle.nozzleNumber}</span>
-                    <span className="text-secondary-900 font-medium">
-                      {nozzle.fuelTypeId?.name || 'Unknown'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {pumps.length === 0 && (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-secondary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-secondary-900">No pumps configured</h3>
-            <p className="mt-1 text-sm text-secondary-500">
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 border-2 border-dashed rounded-lg">
+            <h3 className="mt-2 text-lg font-semibold">No pumps configured</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
               {user?.role === 'admin' 
                 ? 'Get started by adding a new pump.' 
                 : 'Contact your administrator to configure pumps.'}
@@ -202,110 +323,6 @@ export default function Pumps() {
           </div>
         )}
       </div>
-
-      {/* Pump Modal */}
-      {showModal && user?.role === 'admin' && (
-        <div className="fixed inset-0 bg-secondary-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white max-h-screen overflow-y-auto">
-            <h3 className="text-lg font-medium text-secondary-900 mb-4">
-              {editingPump ? 'Edit Pump' : 'Add New Pump'}
-            </h3>
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label className="form-label">Pump Number</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.pumpNumber}
-                  onChange={(e) => setFormData({ ...formData, pumpNumber: e.target.value })}
-                  className="form-input"
-                  placeholder="e.g., P1"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="form-label">Pump Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="form-input"
-                  placeholder="e.g., Pump 1"
-                />
-              </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="form-label">Nozzles</label>
-                  <button
-                    type="button"
-                    onClick={addNozzle}
-                    className="text-sm text-primary-600 hover:text-primary-900"
-                  >
-                    + Add Nozzle
-                  </button>
-                </div>
-                {formData.nozzles.map((nozzle, index) => (
-                  <div key={index} className="flex space-x-2 mb-2">
-                    <input
-                      type="text"
-                      value={nozzle.nozzleNumber}
-                      onChange={(e) => updateNozzle(index, 'nozzleNumber', e.target.value)}
-                      className="form-input flex-1"
-                      placeholder="Nozzle Number"
-                    />
-                    <select
-                      value={nozzle.fuelTypeId}
-                      onChange={(e) => updateNozzle(index, 'fuelTypeId', e.target.value)}
-                      className="form-input flex-1"
-                    >
-                      <option value="">Select Fuel Type</option>
-                      {fuelTypes.map((fuelType) => (
-                        <option key={fuelType._id} value={fuelType._id}>
-                          {fuelType.name}
-                        </option>
-                      ))}
-                    </select>
-                    {formData.nozzles.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeNozzle(index)}
-                        className="text-danger-600 hover:text-danger-900 p-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingPump(null);
-                    setFormData({
-                      pumpNumber: '',
-                      name: '',
-                      nozzles: [{ nozzleNumber: 'N1', fuelTypeId: '' }, { nozzleNumber: 'N2', fuelTypeId: '' }]
-                    });
-                  }}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  {editingPump ? 'Update Pump' : 'Add Pump'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }

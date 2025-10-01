@@ -1,3 +1,17 @@
+# Dependencies
 node_modules
+frontend/node_modules
 
+# Environment variables
 .env
+.env.local
+
+# Next.js build output
+frontend/.next
+
+# Logs
+npm-debug.log
+*.log
+
+# OS-specific
+.DS_Store
