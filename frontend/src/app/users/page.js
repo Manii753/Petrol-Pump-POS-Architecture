@@ -57,6 +57,8 @@ export default function Users() {
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -151,6 +153,18 @@ export default function Users() {
     setShowPasswordModal(true);
   };
 
+  const handleDeleteUser = async () => {
+    try {
+      await usersAPI.deleteUser(userToDelete._id);
+      loadUsers();
+      setShowDeleteConfirmModal(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      // TODO: Show error message to user
+    }
+  };
+
   if (user?.role !== 'admin') {
     return (
       <Layout>
@@ -195,7 +209,68 @@ export default function Users() {
               </DialogHeader>
               <form onSubmit={handleSubmit}>
                 <div className="grid gap-4 py-4">
-                  {/* Form fields */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="username" className="text-right">Username</Label>
+                    <Input
+                      id="username"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      className="col-span-3"
+                      required
+                      disabled={!!editingUser} // Disable username edit for existing users
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="fullName" className="text-right">Full Name</Label>
+                    <Input
+                      id="fullName"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      className="col-span-3"
+                      required
+                    />
+                  </div>
+                  {!editingUser && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="password" className="text-right">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="col-span-3"
+                        required
+                      />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="role" className="text-right">Role</Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value) => setFormData({ ...formData, role: value })}
+                      required
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="attendant">Attendant</SelectItem>
+                        <SelectItem value="supervisor">Supervisor</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editingUser && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="isActive" className="text-right">Active</Label>
+                      <Switch
+                        id="isActive"
+                        checked={formData.isActive}
+                        onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                        className="col-span-3"
+                      />
+                    </div>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
@@ -255,6 +330,15 @@ export default function Users() {
                           <DropdownMenuItem onClick={() => handlePasswordResetClick(u)}>
                             <KeyRound className="mr-2 h-4 w-4" /> Reset Password
                           </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setUserToDelete(u);
+                              setShowDeleteConfirmModal(true);
+                            }}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <UserX className="mr-2 h-4 w-4" /> Delete User
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -304,6 +388,23 @@ export default function Users() {
               <Button type="submit" variant="destructive">Reset Password</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Modal */}
+      <Dialog open={showDeleteConfirmModal} onOpenChange={setShowDeleteConfirmModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you absolutely sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the user 
+              <strong>{userToDelete?.fullName} ({userToDelete?.username})</strong> and remove their data from our servers.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setShowDeleteConfirmModal(false)}>Cancel</Button>
+            <Button type="button" variant="destructive" onClick={handleDeleteUser}>Delete User</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Layout>

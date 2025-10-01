@@ -74,10 +74,13 @@ export const salesAPI = {
 // Tanks API
 export const tanksAPI = {
   getTanks: () => api.get('/tanks'),
-  createTank: (data) => api.post('/tanks', data),
-  updateTank: (id, data) => api.put(`/tanks/${id}`, data),
-  recordDelivery: (data) => api.post('/tanks/delivery', data),
-  getDeliveries: (params) => api.get('/tanks/deliveries', { params }),
+  getTank: (id) => api.get(`/tanks/${id}`),
+  createTank: (tankData) => api.post('/tanks', tankData),
+  updateTank: (id, tankData) => api.put(`/tanks/${id}`, tankData),
+  deleteTank: (id) => api.delete(`/tanks/${id}`),
+  recordDelivery: (deliveryData) => api.post('/tanks/delivery', deliveryData),
+  getDeliveries: (tankId) => api.get(`/tanks/${tankId}/deliveries`),
+  getAllDeliveries: () => api.get('/tanks/deliveries'),
 };
 
 // Reports API

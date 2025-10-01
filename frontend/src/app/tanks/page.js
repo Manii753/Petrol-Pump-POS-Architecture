@@ -32,8 +32,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Pencil, AlertTriangle } from 'lucide-react';
+import { Loader2, Pencil, AlertTriangle, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
 export default function Tanks() {
   const { user } = useAuth();
@@ -41,6 +42,9 @@ export default function Tanks() {
   const [loading, setLoading] = useState(true);
   const [showTankModal, setShowTankModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [allDeliveries, setAllDeliveries] = useState([]);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [tankToDelete, setTankToDelete] = useState(null);
   const [editingTank, setEditingTank] = useState(null);
   const [fuelTypes, setFuelTypes] = useState([]);
   const [tankFormData, setTankFormData] = useState({
@@ -68,6 +72,9 @@ export default function Tanks() {
       const tanksResponse = await tanksAPI.getTanks();
       setTanks(tanksResponse.data);
       
+      const deliveriesResponse = await tanksAPI.getAllDeliveries();
+      setAllDeliveries(deliveriesResponse.data);
+
       const uniqueFuelTypes = [...new Map(tanksResponse.data.map(tank => 
         [tank.fuelTypeId?._id, tank.fuelTypeId]
       )).values()].filter(Boolean);
@@ -149,6 +156,18 @@ export default function Tanks() {
     setShowTankModal(true);
   };
 
+  const handleDeleteTank = async () => {
+    try {
+      await tanksAPI.deleteTank(tankToDelete._id);
+      loadData();
+      setShowDeleteConfirmModal(false);
+      setTankToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete tank:', error);
+      // TODO: Show error message to user
+    }
+  };
+
   const getStockPercentage = (tank) => {
     if (!tank.capacityLitres || tank.capacityLitres === 0) return 0;
     return (tank.currentStock / tank.capacityLitres) * 100;
@@ -186,7 +205,66 @@ export default function Tanks() {
                   </DialogHeader>
                   <form onSubmit={handleTankSubmit}>
                     <div className="grid gap-4 py-4">
-                      {/* Form fields */}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="tankNumber" className="text-right">Tank Number</Label>
+                        <Input
+                          id="tankNumber"
+                          value={tankFormData.tankNumber}
+                          onChange={(e) => setTankFormData({ ...tankFormData, tankNumber: e.target.value })}
+                          className="col-span-3"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="fuelType" className="text-right">Fuel Type</Label>
+                        <Select
+                          value={tankFormData.fuelTypeId}
+                          onValueChange={(value) => setTankFormData({ ...tankFormData, fuelTypeId: value })}
+                          required
+                        >
+                          <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select a fuel type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fuelTypes.map((type) => (
+                              <SelectItem key={type._id} value={type._id}>{type.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="capacityLitres" className="text-right">Capacity (Litres)</Label>
+                        <Input
+                          id="capacityLitres"
+                          type="number"
+                          value={tankFormData.capacityLitres}
+                          onChange={(e) => setTankFormData({ ...tankFormData, capacityLitres: e.target.value })}
+                          className="col-span-3"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="currentStock" className="text-right">Current Stock (Litres)</Label>
+                        <Input
+                          id="currentStock"
+                          type="number"
+                          value={tankFormData.currentStock}
+                          onChange={(e) => setTankFormData({ ...tankFormData, currentStock: e.target.value })}
+                          className="col-span-3"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="reorderLevel" className="text-right">Reorder Level (Litres)</Label>
+                        <Input
+                          id="reorderLevel"
+                          type="number"
+                          value={tankFormData.reorderLevel}
+                          onChange={(e) => setTankFormData({ ...tankFormData, reorderLevel: e.target.value })}
+                          className="col-span-3"
+                          required
+                        />
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setShowTankModal(false)}>Cancel</Button>
@@ -206,7 +284,74 @@ export default function Tanks() {
                 </DialogHeader>
                 <form onSubmit={handleDeliverySubmit}>
                   <div className="grid gap-4 py-4">
-                    {/* Form fields */}
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="tankId" className="text-right">Tank</Label>
+                      <Select
+                        value={deliveryFormData.tankId}
+                        onValueChange={(value) => setDeliveryFormData({ ...deliveryFormData, tankId: value })}
+                        required
+                      >
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue placeholder="Select a tank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tanks.map((tank) => (
+                            <SelectItem key={tank._id} value={tank._id}>{tank.tankNumber} ({tank.fuelTypeId?.name})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="challanNumber" className="text-right">Challan Number</Label>
+                      <Input
+                        id="challanNumber"
+                        value={deliveryFormData.challanNumber}
+                        onChange={(e) => setDeliveryFormData({ ...deliveryFormData, challanNumber: e.target.value })}
+                        className="col-span-3"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="litresDelivered" className="text-right">Litres Delivered</Label>
+                      <Input
+                        id="litresDelivered"
+                        type="number"
+                        value={deliveryFormData.litresDelivered}
+                        onChange={(e) => setDeliveryFormData({ ...deliveryFormData, litresDelivered: e.target.value })}
+                        className="col-span-3"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="deliveryDate" className="text-right">Delivery Date</Label>
+                      <Input
+                        id="deliveryDate"
+                        type="date"
+                        value={deliveryFormData.deliveryDate}
+                        onChange={(e) => setDeliveryFormData({ ...deliveryFormData, deliveryDate: e.target.value })}
+                        className="col-span-3"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="supplierName" className="text-right">Supplier Name</Label>
+                      <Input
+                        id="supplierName"
+                        value={deliveryFormData.supplierName}
+                        onChange={(e) => setDeliveryFormData({ ...deliveryFormData, supplierName: e.target.value })}
+                        className="col-span-3"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="notes" className="text-right">Notes</Label>
+                      <Textarea
+                        id="notes"
+                        value={deliveryFormData.notes}
+                        onChange={(e) => setDeliveryFormData({ ...deliveryFormData, notes: e.target.value })}
+                        className="col-span-3"
+                      />
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setShowDeliveryModal(false)}>Cancel</Button>
@@ -229,9 +374,21 @@ export default function Tanks() {
                       <CardDescription>{tank.fuelTypeId?.name || 'Unknown'}</CardDescription>
                     </div>
                     {user?.role === 'admin' && (
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(tank)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(tank)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setTankToDelete(tank);
+                            setShowDeleteConfirmModal(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardHeader>
@@ -277,6 +434,57 @@ export default function Tanks() {
             </p>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteConfirmModal} onOpenChange={setShowDeleteConfirmModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Are you absolutely sure?</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. This will permanently delete the tank 
+                <strong>{tankToDelete?.tankNumber}</strong> and remove its data from our servers.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteConfirmModal(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteTank}>Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <div className="mt-10">
+          <h2 className="text-xl font-bold mb-4">Delivery History</h2>
+          {allDeliveries.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tank Number</TableHead>
+                    <TableHead>Challan No.</TableHead>
+                    <TableHead>Litres</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead>Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allDeliveries.map((delivery) => (
+                    <TableRow key={delivery._id}>
+                      <TableCell>{delivery.tankId?.tankNumber || 'N/A'}</TableCell>
+                      <TableCell>{delivery.challanNumber}</TableCell>
+                      <TableCell>{delivery.litresDelivered}</TableCell>
+                      <TableCell>{new Date(delivery.deliveryDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{delivery.supplierName}</TableCell>
+                      <TableCell>{delivery.notes}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-center py-4">No delivery history recorded yet.</p>
+          )}
+        </div>
       </div>
     </Layout>
   );

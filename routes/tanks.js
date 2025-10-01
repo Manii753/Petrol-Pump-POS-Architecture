@@ -235,4 +235,27 @@ router.get('/deliveries', auth, async (req, res) => {
   }
 });
 
+// @route   DELETE /api/tanks/:id
+// @desc    Delete a tank (Admin only)
+// @access  Private/Admin
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const tank = await Tank.findById(req.params.id);
+    if (!tank) {
+      return res.status(404).json({ message: 'Tank not found' });
+    }
+
+    await tank.deleteOne();
+
+    res.json({ message: 'Tank deleted successfully' });
+  } catch (error) {
+    console.error('Delete tank error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

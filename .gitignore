@@ -1,3 +1,5 @@
+frontend/.next
+
 # Dependencies
 node_modules
 frontend/node_modules
@@ -8,6 +10,10 @@ frontend/node_modules
 
 # Next.js build output
 frontend/.next
+
+
+
+
 
 # Logs
 npm-debug.log
